@@ -212,7 +212,7 @@ app.get('/', (req, res) => {
     },
     deployed_on: 'Vercel',
     status: 'operational',
-    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
+    project_url: 'inventory-api-blue.vercel.app'
   });
 });
 
