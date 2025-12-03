@@ -10,72 +10,29 @@ require('dotenv').config();
 const app = express();
 
 // ====================
-// TEMPORARY: Disable helmet CSP for Swagger
+// SIMPLE CORS - ALLOW EVERYTHING
 // ====================
 app.use(helmet({
-  contentSecurityPolicy: false, // DISABLE TEMPORARILY FOR SWAGGER
+  contentSecurityPolicy: false, // DISABLE FOR SWAGGER
 }));
 
-// ====================
-// CORS CONFIGURATION - FIXED
-// ====================
-
-// Allow specific origins
-const allowedOrigins = [
-  'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app',
-  'http://localhost:5000',
-  'https://petstore.swagger.io',
-  'http://petstore.swagger.io',
-  'https://cdn.jsdelivr.net'
-];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
-
-// Handle preflight requests
-app.options('*', cors());
-
+app.use(cors()); // ALLOW ALL ORIGINS
 app.use(express.json());
 
 // ====================
-// DATABASE CONNECTION - FIXED FOR VERCEL + ATLAS
+// DATABASE CONNECTION
 // ====================
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  console.error('❌ MONGODB_URI is not defined in environment variables');
-  console.error('💡 Add to Vercel: Settings → Environment Variables');
-  console.error('💡 Format: mongodb+srv://username:password@cluster.mongodb.net/database');
-  
-  // Don't exit in Vercel production
-  if (process.env.VERCEL) {
-    console.log('⚠️ Running without MongoDB connection');
-  }
+  console.error('❌ MONGODB_URI is not defined');
 }
 
-// MONGODB ATLAS CONNECTION OPTIONS
+// Connection options
 const atlasOptions = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // 30 seconds timeout
-  socketTimeoutMS: 45000,
-  connectTimeoutMS: 30000,
-  maxPoolSize: 5,
-  retryWrites: true,
-  w: 'majority'
+  serverSelectionTimeoutMS: 30000,
 };
 
 const connectDB = async () => {
@@ -85,47 +42,22 @@ const connectDB = async () => {
       return;
     }
     
-    console.log('🔗 Connecting to MongoDB Atlas...');
-    console.log('📝 URI:', MONGODB_URI.replace(/\/\/(.*):(.*)@/, '//***:***@'));
-    
     await mongoose.connect(MONGODB_URI, atlasOptions);
-    
-    console.log('✅ MongoDB Atlas Connected Successfully!');
-    console.log('📊 Database:', mongoose.connection.name);
-    console.log('📍 Host:', mongoose.connection.host);
+    console.log('✅ MongoDB Connected');
     
   } catch (error) {
-    console.error('❌ MongoDB Atlas Connection Error:', error.message);
-    console.error('🔧 Troubleshooting:');
-    console.error('   1. Check MongoDB Atlas Network Access → Add IP: 0.0.0.0/0');
-    console.error('   2. Verify username/password in Database Access');
-    console.error('   3. Make sure cluster is running (not paused)');
+    console.error('❌ MongoDB Connection Error:', error.message);
     
-    // Don't crash the app in Vercel
     if (process.env.VERCEL) {
-      console.log('⚠️ Vercel: Continuing without database connection');
+      console.log('⚠️ Vercel: Continuing without database');
     }
   }
 };
 
-// Connect immediately for Vercel
 connectDB();
 
-// Connection event listeners
-mongoose.connection.on('connected', () => {
-  console.log('📊 Mongoose connected to MongoDB Atlas');
-});
-
-mongoose.connection.on('error', (err) => {
-  console.error('📊 Mongoose connection error:', err.message);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('📊 Mongoose disconnected from MongoDB');
-});
-
 // ====================
-// SWAGGER DOCS - FIXED WITH YOUR URL
+// SIMPLE SWAGGER (NO SCHEMAS)
 // ====================
 const swaggerOptions = {
   definition: {
@@ -133,72 +65,31 @@ const swaggerOptions = {
     info: {
       title: 'Inventory API',
       version: '1.0.0',
-      description: 'Inventory Management System API with 7 endpoints',
+      description: 'Inventory Management System API',
     },
     servers: [
       {
         url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app',
-        description: 'Production Server (Vercel)'
+        description: 'Production Server'
       },
       {
         url: 'http://localhost:5000',
         description: 'Development Server'
       }
     ],
-    // ADD SCHEMAS FOR BETTER DOCUMENTATION
-    components: {
-      schemas: {
-        Item: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
-            name: { type: 'string', example: 'Laptop' },
-            quantity: { type: 'number', example: 10 },
-            price: { type: 'number', example: 50000 },
-            category: { type: 'string', example: 'Electronics' },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' }
-          }
-        },
-        ItemInput: {
-          type: 'object',
-          required: ['name', 'quantity', 'price'],
-          properties: {
-            name: { type: 'string', example: 'Laptop' },
-            quantity: { type: 'number', example: 10 },
-            price: { type: 'number', example: 50000 },
-            category: { type: 'string', example: 'Electronics' }
-          }
-        }
-      }
-    },
-    tags: [
-      {
-        name: 'Items',
-        description: 'Item management endpoints'
-      }
-    ]
   },
-  apis: ['./routes/*.js'], // MAKE SURE THIS PATH IS CORRECT
+  apis: ['./routes/*.js'],
 };
 
 const swaggerSpecs = swaggerJsDoc(swaggerOptions);
 
-// Use CDN for Swagger to avoid CSP issues
-const swaggerUISetup = swaggerUI.setup(swaggerSpecs, {
+// Simple Swagger UI setup
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customCssUrl: 'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css',
-  customJs: [
-    'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js',
-    'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-standalone-preset.js'
-  ],
   swaggerOptions: {
     tryItOutEnabled: true,
-    docExpansion: 'list'
   }
-});
-
-app.use('/api-docs', swaggerUI.serve, swaggerUISetup);
+}));
 
 // ====================
 // ROUTES
@@ -215,39 +106,25 @@ app.get('/', (req, res) => {
   
   res.json({
     success: true,
-    message: 'Inventory API is running on Vercel! 🚀',
+    message: 'Inventory API is running! 🚀',
     database: statusText,
-    database_code: dbStatus,
     endpoints: {
-      documentation: '/api-docs',
-      items_api: '/api/items',
-      health_check: '/health'
-    },
-    deployed_on: 'Vercel',
-    status: 'operational',
-    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
+      docs: '/api-docs',
+      items: '/api/items',
+      health: '/health'
+    }
   });
 });
 
 app.get('/health', (req, res) => {
   const dbStatus = mongoose.connection.readyState;
   const isHealthy = dbStatus === 1;
-  const statusCodes = {
-    0: 'disconnected',
-    1: 'connected',
-    2: 'connecting',
-    3: 'disconnecting'
-  };
   
-  res.status(isHealthy ? 200 : 503).json({
+  res.json({
     success: isHealthy,
     status: isHealthy ? 'healthy' : 'unhealthy',
-    database: statusCodes[dbStatus] || 'unknown',
-    database_code: dbStatus,
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    mongodb_configured: !!process.env.MONGODB_URI,
-    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
+    database: dbStatus === 1 ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -258,19 +135,7 @@ app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     message: 'Endpoint not found',
-    available_endpoints: [
-      'GET /',
-      'GET /health',
-      'GET /api-docs',
-      'GET /api/items',
-      'POST /api/items',
-      'GET /api/items/:id',
-      'PUT /api/items/:id',
-      'PATCH /api/items/:id',
-      'DELETE /api/items/:id',
-      'GET /api/items/search?q='
-    ],
-    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
+    available: ['/', '/health', '/api-docs', '/api/items']
   });
 });
 
@@ -278,13 +143,11 @@ app.use((err, req, res, next) => {
   console.error('Server Error:', err);
   res.status(500).json({
     success: false,
-    message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
-    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
+    message: 'Internal Server Error'
   });
 });
 
 // ====================
-// VERCEL SERVERLESS EXPORT
+// VERCEL EXPORT
 // ====================
 module.exports = app;
