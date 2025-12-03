@@ -20,8 +20,9 @@ exports.getItems = async (req, res) => {
 // Create new item
 exports.createItem = async (req, res) => {
     try {
-        // Ensure quantity field is mapped (if client sends 'qty' instead of 'quantity')
+        // Convert 'qty' to 'quantity' if client sends 'qty'
         const itemData = { ...req.body };
+        
         if (itemData.qty !== undefined) {
             itemData.quantity = itemData.qty;
             delete itemData.qty;

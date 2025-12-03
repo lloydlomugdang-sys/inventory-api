@@ -115,19 +115,45 @@ const swaggerOptions = {
   apis: ['./routes/*.js'],
 };
 
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Inventory API',
+      version: '1.0.0',
+      description: 'Inventory Management System API with 7 endpoints',
+    },
+    servers: [
+      {
+        url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app',
+        description: 'Production Server (Vercel)'
+      },
+      {
+        url: 'http://localhost:5000',
+        description: 'Development Server'
+      }
+    ],
+  },
+  apis: ['./routes/*.js'], // This tells Swagger where to find your endpoints
+};
+
 const swaggerSpecs = swaggerJsDoc(swaggerOptions);
 
-// Use CDN for Swagger to avoid CSP issues
-const swaggerUISetup = swaggerUI.setup(swaggerSpecs, {
+// Use CDN for Swagger UI to avoid CSP issues
+const swaggerUIOptions = {
   customCss: '.swagger-ui .topbar { display: none }',
   customCssUrl: 'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css',
   customJs: [
     'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js',
     'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-standalone-preset.js'
-  ]
-});
+  ],
+  swaggerOptions: {
+    persistAuthorization: true,
+    tryItOutEnabled: true
+  }
+};
 
-app.use('/api-docs', swaggerUI.serve, swaggerUISetup);
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs, swaggerUIOptions));
 
 // ====================
 // ROUTES
@@ -186,8 +212,7 @@ app.use('*', (req, res) => {
     success: false,
     message: 'Endpoint not found',
     available_endpoints: [
-      'GET /',
-      'GET /health',
+      'GET /',,
       'GET /api-docs',
       'GET /api/items',
       'POST /api/items',

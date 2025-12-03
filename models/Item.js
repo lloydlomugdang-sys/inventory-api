@@ -3,12 +3,14 @@ const mongoose = require('mongoose');
 const ItemSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: [true, 'Name is required']
+        required: [true, 'Name is required'],
+        trim: true
     },
-    quantity: { 
+    quantity: {  
         type: Number,
         required: [true, 'Quantity is required'],
-        min: [0, 'Quantity cannot be negative']
+        min: [0, 'Quantity cannot be negative'],
+        default: 0
     },
     price: {
         type: Number,
@@ -17,10 +19,11 @@ const ItemSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        default: 'Uncategorized'
+        default: 'Uncategorized',
+        trim: true
     }
 }, {
-    timestamps: true,  // Add createdAt and updatedAt
+    timestamps: true,  
     versionKey: false
 });
 
