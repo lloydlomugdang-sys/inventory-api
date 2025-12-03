@@ -124,7 +124,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'https://inventory-api-blue.vercel.app/api/items',
+        url: 'https://inventory-api-blue.vercel.app',
         description: 'Production Server (Vercel)'
       },
       {
