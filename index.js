@@ -3,7 +3,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const helmet = require('helmet'); // New: Para sa Security
+const helmet = require('helmet'); 
 const swaggerUI = require('swagger-ui-express'); // New: Para sa Documentation
 const swaggerJsDoc = require('swagger-jsdoc'); // New: Para sa Documentation
 
@@ -15,12 +15,16 @@ const app = express();
 // SECURITY & BASIC MIDDLEWARES
 // ===================================
 
-// Requirement #7: Helmet for Security Headers
+
 app.use(helmet()); 
 
 // Basic Express Middlewares
 app.use(express.json()); // Body Parser
 app.use(cors()); // Requirement #7: CORS Enabled
+
+app.get('/', (req, res) => {
+    res.redirect('/api-docs'); // I-redirect ang user sa documentation
+});
 
 // ===================================
 // SWAGGER (OPENAPI) DOCUMENTATION SETUP
@@ -41,7 +45,7 @@ const swaggerOptions = {
                 description: 'Inventory API Routes'
             },
         ],
-        // Dito ilalagay ang inyong Mongoose/Item Schema definitions (Requirement #5)
+       
         components: {
             schemas: {
                 ItemInput: {
@@ -70,13 +74,13 @@ const swaggerOptions = {
             }
         }
     },
-    // Tukuyin kung aling files ang babasahin ng swagger-jsdoc para sa JSDoc comments
+   
     apis: ['./routes/*.js'], 
 };
 
 const swaggerSpecs = swaggerJsDoc(swaggerOptions);
 
-// Requirement #5: Swagger UI accessible at /api-docs
+
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs));
 
 
@@ -93,7 +97,7 @@ require('./config/db')();
 app.use('/api/items', itemRoutes);
 
 // Generic Error Handler (Requirement #7: Handle errors gracefully)
-// Ito ang huling middleware na tatawagin.
+
 app.use((err, req, res, next) => {
     console.error(err.stack);
 
@@ -116,3 +120,5 @@ app.use((err, req, res, next) => {
 // Use PORT from .env or default 5000
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+module.exports = app;
