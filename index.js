@@ -10,44 +10,90 @@ require('dotenv').config();
 const app = express();
 
 // ====================
-// SECURITY MIDDLEWARE
+// TEMPORARY: Disable helmet CSP for Swagger
 // ====================
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-      scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
-      imgSrc: ["'self'", "data:", "https://cdn.jsdelivr.net"]
-    }
-  }
+  contentSecurityPolicy: false, // DISABLE TEMPORARILY
 }));
 app.use(cors());
 app.use(express.json());
 
 // ====================
-// DATABASE CONNECTION
+// DATABASE CONNECTION - FIXED FOR VERCEL + ATLAS
 // ====================
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
   console.error('❌ MONGODB_URI is not defined in environment variables');
+  console.error('💡 Add to Vercel: Settings → Environment Variables');
+  console.error('💡 Format: mongodb+srv://username:password@cluster.mongodb.net/database');
+  
+  // Don't exit in Vercel production
+  if (process.env.VERCEL) {
+    console.log('⚠️ Running without MongoDB connection');
+  }
 }
+
+// MONGODB ATLAS CONNECTION OPTIONS
+const atlasOptions = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000, // 30 seconds timeout
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 30000,
+  maxPoolSize: 5,
+  retryWrites: true,
+  w: 'majority'
+};
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(MONGODB_URI);
-    console.log('✅ MongoDB Connected');
+    if (!MONGODB_URI) {
+      console.log('⚠️ No MONGODB_URI, skipping connection');
+      return;
+    }
+    
+    console.log('🔗 Connecting to MongoDB Atlas...');
+    console.log('📝 URI:', MONGODB_URI.replace(/\/\/(.*):(.*)@/, '//***:***@'));
+    
+    await mongoose.connect(MONGODB_URI, atlasOptions);
+    
+    console.log('✅ MongoDB Atlas Connected Successfully!');
+    console.log('📊 Database:', mongoose.connection.name);
+    console.log('📍 Host:', mongoose.connection.host);
+    
   } catch (error) {
-    console.error('❌ MongoDB Connection Error:', error.message);
+    console.error('❌ MongoDB Atlas Connection Error:', error.message);
+    console.error('🔧 Troubleshooting:');
+    console.error('   1. Check MongoDB Atlas Network Access → Add IP: 0.0.0.0/0');
+    console.error('   2. Verify username/password in Database Access');
+    console.error('   3. Make sure cluster is running (not paused)');
+    
+    // Don't crash the app in Vercel
+    if (process.env.VERCEL) {
+      console.log('⚠️ Vercel: Continuing without database connection');
+    }
   }
 };
 
 // Connect immediately for Vercel
 connectDB();
 
+// Connection event listeners
+mongoose.connection.on('connected', () => {
+  console.log('📊 Mongoose connected to MongoDB Atlas');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('📊 Mongoose connection error:', err.message);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('📊 Mongoose disconnected from MongoDB');
+});
+
 // ====================
-// SWAGGER DOCS
+// SWAGGER DOCS - SIMPLIFIED
 // ====================
 const swaggerOptions = {
   definition: {
@@ -55,16 +101,14 @@ const swaggerOptions = {
     info: {
       title: 'Inventory API',
       version: '1.0.0',
-      description: 'Inventory Management System API with 7 endpoints',
+      description: 'Inventory Management System API',
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Development server'
-      },
-      {
-        url: '/', // For Vercel - will use current domain
-        description: 'Production server'
+        url: process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'http://localhost:5000',
+        description: 'API Server'
       }
     ],
   },
@@ -72,7 +116,18 @@ const swaggerOptions = {
 };
 
 const swaggerSpecs = swaggerJsDoc(swaggerOptions);
-app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs));
+
+// Use CDN for Swagger to avoid CSP issues
+const swaggerUISetup = swaggerUI.setup(swaggerSpecs, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customCssUrl: 'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css',
+  customJs: [
+    'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js',
+    'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-standalone-preset.js'
+  ]
+});
+
+app.use('/api-docs', swaggerUI.serve, swaggerUISetup);
 
 // ====================
 // ROUTES
@@ -84,9 +139,14 @@ app.use('/api/items', itemRoutes);
 // BASIC ENDPOINTS
 // ====================
 app.get('/', (req, res) => {
+  const dbStatus = mongoose.connection.readyState;
+  const statusText = ['disconnected', 'connected', 'connecting', 'disconnecting'][dbStatus] || 'unknown';
+  
   res.json({
     success: true,
     message: 'Inventory API is running on Vercel! 🚀',
+    database: statusText,
+    database_code: dbStatus,
     endpoints: {
       documentation: '/api-docs',
       items_api: '/api/items',
@@ -99,6 +159,7 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   const dbStatus = mongoose.connection.readyState;
+  const isHealthy = dbStatus === 1;
   const statusCodes = {
     0: 'disconnected',
     1: 'connected',
@@ -106,12 +167,14 @@ app.get('/health', (req, res) => {
     3: 'disconnecting'
   };
   
-  res.json({
-    success: dbStatus === 1,
-    status: dbStatus === 1 ? 'healthy' : 'unhealthy',
+  res.status(isHealthy ? 200 : 503).json({
+    success: isHealthy,
+    status: isHealthy ? 'healthy' : 'unhealthy',
     database: statusCodes[dbStatus] || 'unknown',
+    database_code: dbStatus,
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    mongodb_configured: !!process.env.MONGODB_URI
   });
 });
 
@@ -142,12 +205,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({
     success: false,
     message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'production' ? undefined : err.message
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
 // ====================
 // VERCEL SERVERLESS EXPORT
 // ====================
-// This is crucial for Vercel
 module.exports = app;
