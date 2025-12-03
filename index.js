@@ -234,7 +234,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     mongodb_configured: !!process.env.MONGODB_URI,
-    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
+    project_url: 'https://inventory-api-blue.vercel.app/api/items'
   });
 });
 
@@ -257,7 +257,7 @@ app.use('*', (req, res) => {
       'DELETE /api/items/:id',
       'GET /api/items/search?q='
     ],
-    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
+    project_url: 'https://inventory-api-blue.vercel.app/api/items'
   });
 });
 
@@ -267,7 +267,7 @@ app.use((err, req, res, next) => {
     success: false,
     message: 'Internal Server Error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined,
-    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
+    project_url: 'https://inventory-api-blue.vercel.app/api/items'
   });
 });
 
