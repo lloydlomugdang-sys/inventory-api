@@ -1,88 +1,200 @@
 const Item = require('../models/Item');
 
+// Get all items
 exports.getItems = async (req, res) => {
     try {
-        const items = await Item.find();
-        res.json(items);
+        const items = await Item.find().sort({ createdAt: -1 });
+        res.json({
+            success: true,
+            count: items.length,
+            data: items
+        });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ 
+            success: false,
+            error: err.message 
+        });
     }
 };
 
+// Create new item
 exports.createItem = async (req, res) => {
     try {
-        const newItem = new Item(req.body);
+        // Ensure quantity field is mapped (if client sends 'qty' instead of 'quantity')
+        const itemData = { ...req.body };
+        if (itemData.qty !== undefined) {
+            itemData.quantity = itemData.qty;
+            delete itemData.qty;
+        }
+        
+        const newItem = new Item(itemData);
         const savedItem = await newItem.save();
-        res.json(savedItem);
+        
+        res.status(201).json({
+            success: true,
+            message: 'Item created successfully',
+            data: savedItem
+        });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ 
+            success: false,
+            error: err.message 
+        });
     }
 };
 
+// Get item by ID
+exports.getItemById = async (req, res) => {
+    try {
+        const item = await Item.findById(req.params.id);
+        if (!item) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Item not found' 
+            });
+        }
+        res.json({
+            success: true,
+            data: item
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            error: err.message 
+        });
+    }
+};
 
-// update items
+// Update item (PUT)
 exports.updateItem = async (req, res) => {
     try {
-        const updatedItem = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        res.json(updatedItem);
+        // Handle field name mapping
+        const updateData = { ...req.body };
+        if (updateData.qty !== undefined) {
+            updateData.quantity = updateData.qty;
+            delete updateData.qty;
+        }
+        
+        const updatedItem = await Item.findByIdAndUpdate(
+            req.params.id, 
+            updateData, 
+            { 
+                new: true,
+                runValidators: true 
+            }
+        );
+        
+        if (!updatedItem) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Item not found' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Item updated successfully',
+            data: updatedItem
+        });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ 
+            success: false,
+            error: err.message 
+        });
     }
 };
 
+// Partial update (PATCH)
+exports.partialUpdateItem = async (req, res) => {
+    try {
+        // Handle field name mapping
+        const updateData = { ...req.body };
+        if (updateData.qty !== undefined) {
+            updateData.quantity = updateData.qty;
+            delete updateData.qty;
+        }
+        
+        const updatedItem = await Item.findByIdAndUpdate(
+            req.params.id, 
+            updateData, 
+            { 
+                new: true,
+                runValidators: true 
+            }
+        );
+        
+        if (!updatedItem) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Item not found' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Item partially updated successfully',
+            data: updatedItem
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            error: err.message 
+        });
+    }
+};
 
-// delete items
+// Delete item
 exports.deleteItem = async (req, res) => {
     try {
-        await Item.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Item deleted' });
+        const deletedItem = await Item.findByIdAndDelete(req.params.id);
+        
+        if (!deletedItem) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Item not found' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Item deleted successfully'
+        });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ 
+            success: false,
+            error: err.message 
+        });
     }
 };
 
+// Search items
 exports.searchItems = async (req, res) => {
     try {
         const { q } = req.query;
+        
+        if (!q || q.trim() === '') {
+            return res.status(400).json({ 
+                success: false,
+                message: 'Search query is required' 
+            });
+        }
+        
         const items = await Item.find({
             $or: [
                 { name: { $regex: q, $options: 'i' } },
                 { category: { $regex: q, $options: 'i' } }
             ]
-        });
-        res.json(items);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
-// --- Idagdag ito para sa GET /:id ---
-exports.getItemById = async (req, res) => {
-    try {
-        const item = await Item.findById(req.params.id);
-        if (!item) {
-            return res.status(404).json({ message: 'Item not found' });
-        }
-        res.json(item);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
-
-// --- Idagdag ito para sa PATCH /:id ---
-exports.partialUpdateItem = async (req, res) => {
-    try {
-        // FindByIdAndUpdate will apply only the fields present in req.body
-        const updatedItem = await Item.findByIdAndUpdate(req.params.id, req.body, { 
-            new: true, // Ibalik ang updated na document
-            runValidators: true // Tiyakin na gumagana ang Mongoose validators
-        });
+        }).sort({ createdAt: -1 });
         
-        if (!updatedItem) {
-            return res.status(404).json({ message: 'Item not found' });
-        }
-        
-        res.json(updatedItem);
+        res.json({
+            success: true,
+            count: items.length,
+            data: items
+        });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ 
+            success: false,
+            error: err.message 
+        });
     }
 };
