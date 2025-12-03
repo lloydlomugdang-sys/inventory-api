@@ -111,8 +111,9 @@ mongoose.connection.on('disconnected', () => {
   console.log('📊 Mongoose disconnected from MongoDB');
 });
 
-
-//swagger
+// ====================
+// SWAGGER - WITHOUT SCHEMAS
+// ====================
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -130,40 +131,9 @@ const swaggerOptions = {
         url: 'http://localhost:5000',
         description: 'Development Server'
       }
-    ],
-    // ADD SCHEMAS FOR BETTER DOCUMENTATION
-    components: {
-      schemas: {
-        Item: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
-            name: { type: 'string', example: 'Laptop' },
-            quantity: { type: 'number', example: 10 },
-            price: { type: 'number', example: 50000 },
-            category: { type: 'string', example: 'Electronics' },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' }
-          }
-        },
-        ItemInput: {
-          type: 'object',
-          required: ['name', 'quantity', 'price'],
-          properties: {
-            name: { type: 'string', example: 'Laptop' },
-            quantity: { type: 'number', example: 10 },
-            price: { type: 'number', example: 50000 },
-            category: { type: 'string', example: 'Electronics' }
-          }
-        }
-      }
-    },
-    tags: [
-      {
-        name: 'Items',
-        description: 'Item management endpoints'
-      }
     ]
+    // No components.schemas - schemas removed
+    // No tags - optional, can be removed
   },
   apis: ['./routes/*.js'],
 };
@@ -186,8 +156,9 @@ const swaggerUISetup = swaggerUI.setup(swaggerSpecs, {
 
 app.use('/api-docs', swaggerUI.serve, swaggerUISetup);
 
-
-//routes
+// ====================
+// ROUTES
+// ====================
 const itemRoutes = require('./routes/items');
 app.use('/api/items', itemRoutes);
 
