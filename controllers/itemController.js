@@ -19,6 +19,8 @@ exports.createItem = async (req, res) => {
     }
 };
 
+
+// update items
 exports.updateItem = async (req, res) => {
     try {
         const updatedItem = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -28,6 +30,8 @@ exports.updateItem = async (req, res) => {
     }
 };
 
+
+// delete items
 exports.deleteItem = async (req, res) => {
     try {
         await Item.findByIdAndDelete(req.params.id);

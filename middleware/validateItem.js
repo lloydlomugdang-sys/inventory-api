@@ -6,5 +6,5 @@ module.exports = (req, res, next) => {
     if (qty === undefined || typeof qty !== 'number') {
         return res.status(400).json({ error: "Quantity is required and must be a number." });
     }
-    next(); // Pass request to controller kung valid
+    next(); // Pass request to controller if valid
 };
