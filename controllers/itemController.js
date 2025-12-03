@@ -55,3 +55,34 @@ exports.searchItems = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+// --- Idagdag ito para sa GET /:id ---
+exports.getItemById = async (req, res) => {
+    try {
+        const item = await Item.findById(req.params.id);
+        if (!item) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+        res.json(item);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// --- Idagdag ito para sa PATCH /:id ---
+exports.partialUpdateItem = async (req, res) => {
+    try {
+        // FindByIdAndUpdate will apply only the fields present in req.body
+        const updatedItem = await Item.findByIdAndUpdate(req.params.id, req.body, { 
+            new: true, // Ibalik ang updated na document
+            runValidators: true // Tiyakin na gumagana ang Mongoose validators
+        });
+        
+        if (!updatedItem) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+        
+        res.json(updatedItem);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
