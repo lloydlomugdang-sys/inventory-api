@@ -13,7 +13,7 @@ const app = express();
 // TEMPORARY: Disable helmet CSP for Swagger
 // ====================
 app.use(helmet({
-  contentSecurityPolicy: false, // DISABLE TEMPORARILY
+  contentSecurityPolicy: false, // DISABLE TEMPORARILY FOR SWAGGER
 }));
 app.use(cors());
 app.use(express.json());
@@ -93,28 +93,8 @@ mongoose.connection.on('disconnected', () => {
 });
 
 // ====================
-// SWAGGER DOCS - SIMPLIFIED
+// SWAGGER DOCS - FIXED WITH YOUR URL
 // ====================
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Inventory API',
-      version: '1.0.0',
-      description: 'Inventory Management System API',
-    },
-    servers: [
-      {
-        url: process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : 'http://localhost:5000',
-        description: 'API Server'
-      }
-    ],
-  },
-  apis: ['./routes/*.js'],
-};
-
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -133,14 +113,47 @@ const swaggerOptions = {
         description: 'Development Server'
       }
     ],
+    // ADD SCHEMAS FOR BETTER DOCUMENTATION
+    components: {
+      schemas: {
+        Item: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
+            name: { type: 'string', example: 'Laptop' },
+            quantity: { type: 'number', example: 10 },
+            price: { type: 'number', example: 50000 },
+            category: { type: 'string', example: 'Electronics' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        ItemInput: {
+          type: 'object',
+          required: ['name', 'quantity', 'price'],
+          properties: {
+            name: { type: 'string', example: 'Laptop' },
+            quantity: { type: 'number', example: 10 },
+            price: { type: 'number', example: 50000 },
+            category: { type: 'string', example: 'Electronics' }
+          }
+        }
+      }
+    },
+    tags: [
+      {
+        name: 'Items',
+        description: 'Item management endpoints'
+      }
+    ]
   },
-  apis: ['./routes/*.js'], // This tells Swagger where to find your endpoints
+  apis: ['./routes/*.js'], // MAKE SURE THIS PATH IS CORRECT
 };
 
 const swaggerSpecs = swaggerJsDoc(swaggerOptions);
 
-// Use CDN for Swagger UI to avoid CSP issues
-const swaggerUIOptions = {
+// Use CDN for Swagger to avoid CSP issues
+const swaggerUISetup = swaggerUI.setup(swaggerSpecs, {
   customCss: '.swagger-ui .topbar { display: none }',
   customCssUrl: 'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css',
   customJs: [
@@ -148,12 +161,12 @@ const swaggerUIOptions = {
     'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-standalone-preset.js'
   ],
   swaggerOptions: {
-    persistAuthorization: true,
-    tryItOutEnabled: true
+    tryItOutEnabled: true,
+    docExpansion: 'list'
   }
-};
+});
 
-app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs, swaggerUIOptions));
+app.use('/api-docs', swaggerUI.serve, swaggerUISetup);
 
 // ====================
 // ROUTES
@@ -179,7 +192,8 @@ app.get('/', (req, res) => {
       health_check: '/health'
     },
     deployed_on: 'Vercel',
-    status: 'operational'
+    status: 'operational',
+    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
   });
 });
 
@@ -200,19 +214,21 @@ app.get('/health', (req, res) => {
     database_code: dbStatus,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    mongodb_configured: !!process.env.MONGODB_URI
+    mongodb_configured: !!process.env.MONGODB_URI,
+    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
   });
 });
 
 // ====================
-// ERROR HANDLING
+// ERROR HANDLING - FIXED (removed extra comma)
 // ====================
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     message: 'Endpoint not found',
     available_endpoints: [
-      'GET /',,
+      'GET /',
+      'GET /health',
       'GET /api-docs',
       'GET /api/items',
       'POST /api/items',
@@ -221,7 +237,8 @@ app.use('*', (req, res) => {
       'PATCH /api/items/:id',
       'DELETE /api/items/:id',
       'GET /api/items/search?q='
-    ]
+    ],
+    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
   });
 });
 
@@ -230,7 +247,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({
     success: false,
     message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    project_url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app'
   });
 });
 
