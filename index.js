@@ -15,7 +15,39 @@ const app = express();
 app.use(helmet({
   contentSecurityPolicy: false, // DISABLE TEMPORARILY FOR SWAGGER
 }));
-app.use(cors());
+
+// ====================
+// CORS CONFIGURATION - FIXED
+// ====================
+
+// Allow specific origins
+const allowedOrigins = [
+  'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app',
+  'http://localhost:5000',
+  'https://petstore.swagger.io',
+  'http://petstore.swagger.io',
+  'https://cdn.jsdelivr.net'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Handle preflight requests
+app.options('*', cors());
+
 app.use(express.json());
 
 // ====================
@@ -220,7 +252,7 @@ app.get('/health', (req, res) => {
 });
 
 // ====================
-// ERROR HANDLING - FIXED (removed extra comma)
+// ERROR HANDLING
 // ====================
 app.use('*', (req, res) => {
   res.status(404).json({
