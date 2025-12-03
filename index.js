@@ -1,86 +1,94 @@
-// server.js
+// index.js
 
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet'); 
-const swaggerUI = require('swagger-ui-express'); // New: Para sa Documentation
-const swaggerJsDoc = require('swagger-jsdoc'); // New: Para sa Documentation
+const swaggerUI = require('swagger-ui-express');
+const swaggerJsDoc = require('swagger-jsdoc');
 
 require('dotenv').config();
 
 const app = express();
 
 // ===================================
-// SECURITY & BASIC MIDDLEWARES
+// SECURITY & MIDDLEWARES
 // ===================================
 
+// FIX: Allow CDN for Swagger UI
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "script-src": ["'self'", "https://cdn.jsdelivr.net"],
+        "style-src": ["'self'", "https://cdn.jsdelivr.net"],
+        "img-src": ["'self'", "data:", "https://cdn.jsdelivr.net"],
+      },
+    },
+  })
+);
 
-app.use(helmet()); 
+app.use(express.json());
+app.use(cors());
 
-// Basic Express Middlewares
-app.use(express.json()); // Body Parser
-app.use(cors()); // Requirement #7: CORS Enabled
-
+// Redirect root → Swagger docs
 app.get('/', (req, res) => {
-    res.redirect('/api-docs'); // I-redirect ang user sa documentation
+  res.redirect('/api-docs');
 });
 
 // ===================================
-// SWAGGER (OPENAPI) DOCUMENTATION SETUP
+// SWAGGER DOCS SETUP
 // ===================================
 
-// Configuration para sa swagger-jsdoc
 const swaggerOptions = {
-    definition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'Inventory API Documentation', 
-            version: '1.0.0',
-            description: 'Inventory Management API documentation, built with Express, Mongoose, and MongoDB.',
-        },
-        servers: [
-            {
-                url: 'https://inventory-api-umber.vercel.app/api-docs/', 
-                description: 'Deployed API'
-            },
-        ],
-       
-        components: {
-            schemas: {
-                ItemInput: {
-                    type: 'object',
-                    required: ['name', 'quantity', 'price'],
-                    properties: {
-                        name: { type: 'string', example: 'HDMI Cable' },
-                        quantity: { type: 'number', example: 150 },
-                        price: { type: 'number', example: 350.50 },
-                        category: { type: 'string', example: 'Electronics' },
-                    }
-                },
-                Item: {
-                    allOf: [
-                        { $ref: '#/components/schemas/ItemInput' },
-                        {
-                            type: 'object',
-                            properties: {
-                                _id: { type: 'string', description: 'Unique identifier' },
-                                createdAt: { type: 'string', format: 'date-time' },
-                                updatedAt: { type: 'string', format: 'date-time' },
-                            }
-                        }
-                    ]
-                }
-            }
-        }
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Inventory API Documentation',
+      version: '1.0.0',
+      description: 'Inventory Management API using Node, Express, MongoDB',
     },
-   
-    apis: ['./routes/*.js'], 
+    servers: [
+      {
+        url: '/', // FIXED — should not be /api-docs/
+        description: 'Production server'
+      }
+    ],
+    components: {
+      schemas: {
+        ItemInput: {
+          type: 'object',
+          required: ['name', 'quantity', 'price'],
+          properties: {
+            name: { type: 'string', example: 'HDMI Cable' },
+            quantity: { type: 'number', example: 150 },
+            price: { type: 'number', example: 350.5 },
+            category: { type: 'string', example: 'Electronics' },
+          },
+        },
+        Item: {
+          allOf: [
+            { $ref: '#/components/schemas/ItemInput' },
+            {
+              type: 'object',
+              properties: {
+                _id: { type: 'string' },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' },
+              },
+            },
+          ],
+        },
+      },
+    },
+  },
+  apis: ['./routes/*.js'],
 };
 
 const swaggerSpecs = swaggerJsDoc(swaggerOptions);
 
-
+// FIX: Use CDN for Swagger UI files (no MIME errors)
 app.use(
   '/api-docs',
   swaggerUI.serve,
@@ -94,42 +102,32 @@ app.use(
   })
 );
 
-
-
 // ===================================
-// ROUTES & ERROR HANDLING
+// ROUTES
 // ===================================
 
 const itemRoutes = require('./routes/items');
-
-// Connection to DB (from config/db.js)
 require('./config/db')();
 
-// Routes
 app.use('/api/items', itemRoutes);
 
-// Generic Error Handler (Requirement #7: Handle errors gracefully)
+// ===================================
+// ERROR HANDLER
+// ===================================
 
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+  console.error(err.stack);
 
-    // Default status code at message
-    const status = err.status || 500;
-    const message = err.message || 'Something went wrong on the server.';
-    
-    // I-return ang error as JSON
-    res.status(status).json({
-        success: false,
-        message: message,
-    });
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+  });
 });
 
-
 // ===================================
-// SERVER START
+// SERVER (Local only)
 // ===================================
 
-// Use PORT from .env or default 5000
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
