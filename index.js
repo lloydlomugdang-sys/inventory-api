@@ -124,7 +124,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'https://inventory-jnc9d2p3n-john-lloyds-projects-3baf7b6d.vercel.app',
+        url: 'https://inventory-api-blue.vercel.app/api/items',
         description: 'Production Server (Vercel)'
       },
       {
