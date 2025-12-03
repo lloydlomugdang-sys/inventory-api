@@ -130,6 +130,39 @@ const swaggerOptions = {
         url: 'http://localhost:5000',
         description: 'Development Server'
       }
+    ],
+    // ADD SCHEMAS FOR BETTER DOCUMENTATION
+    components: {
+      schemas: {
+        Item: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
+            name: { type: 'string', example: 'Laptop' },
+            quantity: { type: 'number', example: 10 },
+            price: { type: 'number', example: 50000 },
+            category: { type: 'string', example: 'Electronics' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        ItemInput: {
+          type: 'object',
+          required: ['name', 'quantity', 'price'],
+          properties: {
+            name: { type: 'string', example: 'Laptop' },
+            quantity: { type: 'number', example: 10 },
+            price: { type: 'number', example: 50000 },
+            category: { type: 'string', example: 'Electronics' }
+          }
+        }
+      }
+    },
+    tags: [
+      {
+        name: 'Items',
+        description: 'Item management endpoints'
+      }
     ]
   },
   apis: ['./routes/*.js'],
@@ -158,8 +191,9 @@ app.use('/api-docs', swaggerUI.serve, swaggerUISetup);
 const itemRoutes = require('./routes/items');
 app.use('/api/items', itemRoutes);
 
-
-//BASIC ENDPOINTS
+// ====================
+// BASIC ENDPOINTS
+// ====================
 app.get('/', (req, res) => {
   const dbStatus = mongoose.connection.readyState;
   const statusText = ['disconnected', 'connected', 'connecting', 'disconnecting'][dbStatus] || 'unknown';
