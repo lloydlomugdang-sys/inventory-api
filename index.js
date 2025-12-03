@@ -112,7 +112,162 @@ mongoose.connection.on('disconnected', () => {
 });
 
 // ====================
-// SWAGGER DOCS - FIXED WITH YOUR URL
+// DYNAMIC SWAGGER SCHEMA GENERATOR
+// ====================
+function generateDynamicSchemas() {
+  try {
+    // Load the Item model
+    const Item = require('./models/Item');
+    const schema = Item.schema;
+    
+    const itemProperties = {};
+    const itemInputProperties = {};
+    const requiredFields = [];
+    
+    // Get all schema paths
+    for (const [pathName, path] of Object.entries(schema.paths)) {
+      // Skip internal/technical fields
+      if (pathName.startsWith('_') || pathName === '__v' || 
+          pathName === 'createdAt' || pathName === 'updatedAt') {
+        continue;
+      }
+      
+      // Determine Swagger type from Mongoose type
+      let swaggerType = 'string';
+      let exampleValue = 'Example';
+      
+      if (path.instance === 'String') {
+        swaggerType = 'string';
+        exampleValue = getStringExample(pathName);
+      } else if (path.instance === 'Number') {
+        swaggerType = 'number';
+        exampleValue = getNumberExample(pathName);
+      } else if (path.instance === 'Boolean') {
+        swaggerType = 'boolean';
+        exampleValue = true;
+      } else if (path.instance === 'Date') {
+        swaggerType = 'string';
+        exampleValue = new Date().toISOString();
+      }
+      
+      // Create field definition
+      const fieldDef = {
+        type: swaggerType,
+        example: exampleValue
+      };
+      
+      // Add validation constraints
+      if (path.options && path.options.min !== undefined) {
+        fieldDef.minimum = path.options.min;
+      }
+      if (path.options && path.options.max !== undefined) {
+        fieldDef.maximum = path.options.max;
+      }
+      if (path.options && path.options.default !== undefined) {
+        fieldDef.default = path.options.default;
+      }
+      
+      // Add to properties
+      itemProperties[pathName] = fieldDef;
+      itemInputProperties[pathName] = { ...fieldDef };
+      
+      // Check if required
+      if (path.isRequired && pathName !== '_id') {
+        requiredFields.push(pathName);
+      }
+    }
+    
+    // Helper functions for examples
+    function getStringExample(fieldName) {
+      const examples = {
+        'name': 'Laptop',
+        'category': 'Electronics',
+        'description': 'High-performance device',
+        'sku': 'ABC-123'
+      };
+      return examples[fieldName] || 'Sample Text';
+    }
+    
+    function getNumberExample(fieldName) {
+      const examples = {
+        'quantity': 10,
+        'price': 50000,
+        'stock': 100,
+        'weight': 2.5
+      };
+      return examples[fieldName] || 100;
+    }
+    
+    // Return dynamic schemas
+    return {
+      Item: {
+        type: 'object',
+        properties: {
+          _id: { 
+            type: 'string', 
+            example: '507f1f77bcf86cd799439011',
+            description: 'Auto-generated MongoDB ID'
+          },
+          ...itemProperties,
+          createdAt: {
+            type: 'string',
+            format: 'date-time',
+            example: '2024-01-01T00:00:00.000Z',
+            description: 'Creation timestamp'
+          },
+          updatedAt: {
+            type: 'string',
+            format: 'date-time',
+            example: '2024-01-01T00:00:00.000Z',
+            description: 'Last update timestamp'
+          }
+        }
+      },
+      ItemInput: {
+        type: 'object',
+        required: requiredFields,
+        properties: itemInputProperties,
+        description: 'Input schema for creating/updating items'
+      }
+    };
+    
+  } catch (error) {
+    console.error('⚠️ Could not generate dynamic schemas:', error.message);
+    console.log('📝 Using static schemas as fallback');
+    
+    // Fallback to static schemas
+    return {
+      Item: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
+          name: { type: 'string', example: 'Laptop' },
+          quantity: { type: 'number', example: 10 },
+          price: { type: 'number', example: 50000 },
+          category: { type: 'string', example: 'Electronics' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' }
+        }
+      },
+      ItemInput: {
+        type: 'object',
+        required: ['name', 'quantity', 'price'],
+        properties: {
+          name: { type: 'string', example: 'Laptop' },
+          quantity: { type: 'number', example: 10 },
+          price: { type: 'number', example: 50000 },
+          category: { type: 'string', example: 'Electronics' }
+        }
+      }
+    };
+  }
+}
+
+// Generate dynamic schemas
+const dynamicSchemas = generateDynamicSchemas();
+
+// ====================
+// SWAGGER DOCS WITH DYNAMIC SCHEMAS
 // ====================
 const swaggerOptions = {
   definition: {
@@ -132,32 +287,9 @@ const swaggerOptions = {
         description: 'Development Server'
       }
     ],
-    // ADD SCHEMAS FOR BETTER DOCUMENTATION
+    // DYNAMIC SCHEMAS - Auto-generated from Mongoose model
     components: {
-      schemas: {
-        Item: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
-            name: { type: 'string', example: 'Laptop' },
-            quantity: { type: 'number', example: 10 },
-            price: { type: 'number', example: 50000 },
-            category: { type: 'string', example: 'Electronics' },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' }
-          }
-        },
-        ItemInput: {
-          type: 'object',
-          required: ['name', 'quantity', 'price'],
-          properties: {
-            name: { type: 'string', example: 'Laptop' },
-            quantity: { type: 'number', example: 10 },
-            price: { type: 'number', example: 50000 },
-            category: { type: 'string', example: 'Electronics' }
-          }
-        }
-      }
+      schemas: dynamicSchemas
     },
     tags: [
       {
@@ -212,7 +344,12 @@ app.get('/', (req, res) => {
     },
     deployed_on: 'Vercel',
     status: 'operational',
-    project_url: 'https://inventory-api-blue.vercel.app'
+    project_url: 'https://inventory-api-blue.vercel.app',
+    features: {
+      dynamic_schemas: true,
+      total_endpoints: 10,
+      swagger_ui: '/api-docs'
+    }
   });
 });
 
@@ -234,7 +371,8 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     mongodb_configured: !!process.env.MONGODB_URI,
-    project_url: 'https://inventory-api-blue.vercel.app'
+    project_url: 'https://inventory-api-blue.vercel.app',
+    dynamic_schemas: true
   });
 });
 
@@ -257,7 +395,8 @@ app.use('*', (req, res) => {
       'DELETE /api/items/:id',
       'GET /api/items/search?q='
     ],
-    project_url: 'https://inventory-api-blue.vercel.app'
+    project_url: 'https://inventory-api-blue.vercel.app',
+    note: 'Schemas are dynamically generated from Mongoose models'
   });
 });
 
