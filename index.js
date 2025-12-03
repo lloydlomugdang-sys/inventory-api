@@ -41,8 +41,8 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: '/api/items', 
-                description: 'Inventory API Routes'
+                url: 'https://inventory-api-umber.vercel.app/api-docs/', 
+                description: 'Deployed API'
             },
         ],
        
@@ -81,7 +81,19 @@ const swaggerOptions = {
 const swaggerSpecs = swaggerJsDoc(swaggerOptions);
 
 
-app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs));
+app.use(
+  '/api-docs',
+  swaggerUI.serve,
+  swaggerUI.setup(swaggerSpecs, {
+    customCssUrl:
+      'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css',
+    customJs: [
+      'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js',
+      'https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-standalone-preset.js',
+    ],
+  })
+);
+
 
 
 // ===================================
